@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/radar_retool_mockup.html" }
+  ]
+}
