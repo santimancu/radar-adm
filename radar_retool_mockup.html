@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RADAR — Panel de Curación</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #f5f4ef;
+    --surface: #edecea;
+    --surface2: #e4e2de;
+    --border:  #dddbd6;
+    --border2: #ccc9c3;
+    --text:    #1a1a18;
+    --muted:   #888;
+    --muted2:  #aaa;
+
+    --green:   #b8d4a8;
+    --purple:  #c4b4e0;
+    --amber:   #e0c88c;
+    --blue:    #a4c4e0;
+    --pink:    #e0a8bc;
+
+    --green-t:  rgba(184,212,168,0.25);
+    --purple-t: rgba(196,180,224,0.25);
+    --amber-t:  rgba(224,200,140,0.25);
+    --blue-t:   rgba(164,196,224,0.25);
+    --pink-t:   rgba(224,168,188,0.25);
+
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; display: flex; height: 100vh; overflow: hidden; }
+
+  /* SIDEBAR */
+  .sidebar { width: 210px; border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; background: var(--bg); }
+  .sidebar-header { padding: 20px 18px 16px; border-bottom: 1px solid var(--border); }
+  .logo { font-family: var(--mono); font-size: 14px; letter-spacing: 0.06em; color: var(--text); }
+  .logo span { color: var(--muted2); }
+
+  .sidebar-nav { padding: 10px 8px; flex: 1; overflow-y: auto; }
+  .nav-section { font-size: 10px; letter-spacing: 0.1em; color: var(--muted2); padding: 10px 10px 4px; text-transform: uppercase; font-family: var(--mono); }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px; cursor: pointer; color: var(--muted); font-size: 13px; transition: all 0.12s; }
+  .nav-item:hover { background: var(--surface); color: var(--text); }
+  .nav-item.active { background: var(--surface2); color: var(--text); font-weight: 500; }
+  .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border2); flex-shrink: 0; }
+  .nav-item.active .nav-dot { background: var(--text); }
+  .nav-count { margin-left: auto; font-family: var(--mono); font-size: 11px; background: var(--amber); color: #0a0a0a; padding: 1px 6px; border-radius: 10px; }
+
+  /* MAIN */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+
+  /* TOOLBAR */
+  .toolbar { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--bg); }
+  .toolbar-title { font-family: var(--mono); font-size: 13px; letter-spacing: 0.04em; flex: 1; color: var(--text); }
+  .search { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; color: var(--text); font-family: var(--sans); font-size: 12px; width: 180px; outline: none; }
+  .search:focus { border-color: var(--border2); }
+  .search::placeholder { color: var(--muted2); }
+  .filter-pill { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; font-family: var(--sans); transition: all 0.12s; }
+  .filter-pill:hover { border-color: var(--border2); color: var(--text); }
+  .filter-pill.active { background: var(--amber); border-color: transparent; color: #0a0a0a; font-weight: 500; }
+
+  /* CAT TABS */
+  .cat-tabs { display: flex; gap: 0; padding: 0 20px; border-bottom: 1px solid var(--border); background: var(--bg); }
+  .cat-tab { padding: 10px 14px; font-size: 12px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.12s; font-family: var(--sans); }
+  .cat-tab:hover { color: var(--text); }
+  .cat-tab.active { color: var(--text); border-bottom-color: var(--text); font-weight: 500; }
+
+  /* CONTENT AREA */
+  .content-area { flex: 1; display: flex; overflow: hidden; }
+
+  /* TABLE */
+  .table-panel { width: 50%; border-right: 1px solid var(--border); overflow-y: auto; background: var(--bg); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { padding: 9px 16px; text-align: left; font-size: 10px; letter-spacing: 0.08em; color: var(--muted2); text-transform: uppercase; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); font-weight: 400; font-family: var(--mono); }
+  tbody td { padding: 11px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr { cursor: pointer; transition: background 0.1s; }
+  tbody tr:hover td { background: var(--surface); }
+  tbody tr.selected td { background: var(--surface2); }
+
+  .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .status-dot.pending  { background: var(--amber); }
+  .status-dot.approved { background: var(--green); }
+  .status-dot.rejected { background: var(--pink); }
+
+  .type-pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-family: var(--mono); font-size: 10px; background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .title-cell { font-size: 13px; color: var(--text); max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta-cell { font-size: 11px; color: var(--muted2); font-family: var(--mono); }
+
+  /* DETAIL */
+  .detail-panel { flex: 1; overflow-y: auto; padding: 24px; background: var(--bg); }
+
+  .detail-head { margin-bottom: 20px; }
+  .detail-title { font-size: 18px; font-weight: 500; margin-bottom: 8px; line-height: 1.3; color: var(--text); }
+  .badge-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-family: var(--mono); }
+  .badge.cat  { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); }
+  .badge.type { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); }
+  .badge.pending  { background: var(--amber-t); border: 1px solid var(--amber); color: #7a5a00; }
+  .badge.approved { background: var(--green-t); border: 1px solid var(--green); color: #2a5a1a; }
+  .badge.rejected { background: var(--pink-t);  border: 1px solid var(--pink);  color: #7a1a3a; }
+
+  /* FIELDS */
+  .field-section { margin-bottom: 18px; }
+  .field-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted2); margin-bottom: 6px; font-family: var(--mono); }
+  .field { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 13px; color: var(--text); font-family: var(--sans); outline: none; transition: border-color 0.12s; }
+  .field:focus { border-color: var(--border2); }
+  textarea.field { resize: vertical; min-height: 68px; line-height: 1.55; }
+  select.field { cursor: pointer; }
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* TAGS */
+  .tags-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .tag { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-family: var(--mono); background: var(--surface2); border: 1px solid var(--border2); color: var(--text); }
+  .tag .x { color: var(--muted2); cursor: pointer; line-height: 1; font-size: 13px; }
+  .tag .x:hover { color: var(--text); }
+  .tag-input { background: transparent; border: 1px dashed var(--border2); border-radius: 20px; padding: 4px 10px; font-size: 11px; font-family: var(--mono); color: var(--text); outline: none; width: 110px; }
+  .tag-input::placeholder { color: var(--muted2); }
+
+  /* CAT BLOCK */
+  .cat-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 18px; }
+  .cat-block-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted2); font-family: var(--mono); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .cat-block-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .cat-block .field-grid { margin-bottom: 10px; }
+  .cat-block .field-grid:last-child { margin-bottom: 0; }
+
+  /* COLOR ACCENT STRIP */
+  .color-strip { height: 3px; border-radius: 2px; margin-bottom: 18px; }
+  .strip-events  { background: linear-gradient(90deg, var(--purple) 0%, var(--blue) 100%); }
+  .strip-gastro  { background: linear-gradient(90deg, var(--amber) 0%, var(--pink) 100%); }
+
+  /* ACTIONS */
+  .action-bar { display: flex; gap: 8px; padding-top: 14px; border-top: 1px solid var(--border); margin-top: 6px; }
+  .btn { padding: 7px 16px; border-radius: 6px; border: 1px solid var(--border2); background: transparent; color: var(--text); font-family: var(--sans); font-size: 12px; cursor: pointer; transition: all 0.12s; }
+  .btn:hover { background: var(--surface2); }
+  .btn.danger { border-color: var(--pink); color: #7a1a3a; background: var(--pink-t); }
+  .btn.danger:hover { background: var(--pink); color: #0a0a0a; }
+  .btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .btn.primary:hover { opacity: 0.85; }
+  .spacer { flex: 1; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">radar_ <span>admin</span></div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section">contenido</div>
+    <div class="nav-item active"><span class="nav-dot"></span> Curación <span class="nav-count">47</span></div>
+    <div class="nav-item"><span class="nav-dot"></span> Todo</div>
+    <div class="nav-item"><span class="nav-dot"></span> Eventos</div>
+    <div class="nav-section">fuentes</div>
+    <div class="nav-item"><span class="nav-dot"></span> Curadores</div>
+    <div class="nav-item"><span class="nav-dot"></span> Apify runs</div>
+    <div class="nav-section">usuarios</div>
+    <div class="nav-item"><span class="nav-dot"></span> Usuarios</div>
+    <div class="nav-item"><span class="nav-dot"></span> Interacciones</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <div class="toolbar">
+    <span class="toolbar-title">curación pendiente</span>
+    <input class="search" placeholder="buscar...">
+    <button class="filter-pill active" onclick="setFilter(this)">pendientes 47</button>
+    <button class="filter-pill" onclick="setFilter(this)">aprobados</button>
+    <button class="filter-pill" onclick="setFilter(this)">rechazados</button>
+  </div>
+
+  <div class="cat-tabs">
+    <div class="cat-tab active" onclick="setTab(this)">todos</div>
+    <div class="cat-tab" onclick="setTab(this)">gastronomy</div>
+    <div class="cat-tab" onclick="setTab(this)">events</div>
+    <div class="cat-tab" onclick="setTab(this)">audiovisual</div>
+    <div class="cat-tab" onclick="setTab(this)">experiences</div>
+  </div>
+
+  <div class="content-area">
+
+    <!-- TABLE -->
+    <div class="table-panel">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:16px"></th>
+            <th>título</th>
+            <th>tipo</th>
+            <th>ciudad</th>
+            <th>fuente</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="selected" onclick="show('event', this)">
+            <td><span class="status-dot pending"></span></td>
+            <td class="title-cell">Kraft Collective BA</td>
+            <td><span class="type-pill">party</span></td>
+            <td class="meta-cell">BUE</td>
+            <td class="meta-cell">instagram</td>
+          </tr>
+          <tr onclick="show('restaurant', this)">
+            <td><span class="status-dot pending"></span></td>
+            <td class="title-cell">Lula Restaurante</td>
+            <td><span class="type-pill">restaurant</span></td>
+            <td class="meta-cell">BUE</td>
+            <td class="meta-cell">instagram</td>
+          </tr>
+          <tr onclick="show('event', this)">
+            <td><span class="status-dot pending"></span></td>
+            <td class="title-cell">SACH Estudios Abiertos</td>
+            <td><span class="type-pill">exhibition</span></td>
+            <td class="meta-cell">BUE</td>
+            <td class="meta-cell">instagram</td>
+          </tr>
+          <tr onclick="show('event', this)">
+            <td><span class="status-dot pending"></span></td>
+            <td class="title-cell">Free Museum Night BCN</td>
+            <td><span class="type-pill">exhibition</span></td>
+            <td class="meta-cell">BCN</td>
+            <td class="meta-cell">instagram</td>
+          </tr>
+          <tr onclick="show('restaurant', this)">
+            <td><span class="status-dot pending"></span></td>
+            <td class="title-cell">Feria Francesa Rosedal</td>
+            <td><span class="type-pill">festival</span></td>
+            <td class="meta-cell">BUE</td>
+            <td class="meta-cell">instagram</td>
+          </tr>
+          <tr onclick="show('restaurant', this)">
+            <td><span class="status-dot approved"></span></td>
+            <td class="title-cell">Don Julio</td>
+            <td><span class="type-pill">restaurant</span></td>
+            <td class="meta-cell">BUE</td>
+            <td class="meta-cell">google_maps</td>
+          </tr>
+          <tr onclick="show('restaurant', this)">
+            <td><span class="status-dot approved"></span></td>
+            <td class="title-cell">La Fuerza</td>
+            <td><span class="type-pill">bar</span></td>
+            <td class="meta-cell">BUE</td>
+            <td class="meta-cell">google_maps</td>
+          </tr>
+          <tr onclick="show('event', this)">
+            <td><span class="status-dot pending"></span></td>
+            <td class="title-cell">Croma XP en ArtLab</td>
+            <td><span class="type-pill">party</span></td>
+            <td class="meta-cell">BUE</td>
+            <td class="meta-cell">instagram</td>
+          </tr>
+          <tr onclick="show('restaurant', this)">
+            <td><span class="status-dot pending"></span></td>
+            <td class="title-cell">@pielihueso_ en Caprichito</td>
+            <td><span class="type-pill">pop_up</span></td>
+            <td class="meta-cell">BUE</td>
+            <td class="meta-cell">instagram</td>
+          </tr>
+          <tr onclick="show('restaurant', this)">
+            <td><span class="status-dot pending"></span></td>
+            <td class="title-cell">Polenta.polenta Complejo C</td>
+            <td><span class="type-pill">party</span></td>
+            <td class="meta-cell">BUE</td>
+            <td class="meta-cell">instagram</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- DETAIL -->
+    <div class="detail-panel" id="detail">
+
+      <div class="detail-head">
+        <div class="detail-title" id="d-title">Kraft Collective BA</div>
+        <div class="badge-row">
+          <span class="badge cat" id="d-cat">events</span>
+          <span class="badge type" id="d-type">party</span>
+          <span class="badge pending" id="d-status">pendiente</span>
+        </div>
+      </div>
+
+      <div class="color-strip strip-events" id="d-strip"></div>
+
+      <div class="field-section">
+        <div class="field-label">descripción</div>
+        <textarea class="field" id="d-desc"></textarea>
+      </div>
+
+      <div class="field-section">
+        <div class="field-label">tags</div>
+        <div class="tags-wrap" id="d-tags"></div>
+        <input class="tag-input" placeholder="+ tag" onkeydown="addTag(event)">
+      </div>
+
+      <div id="d-specific"></div>
+
+      <div class="field-section">
+        <div class="field-label">ubicación</div>
+        <div class="field-grid">
+          <input class="field" id="d-city" placeholder="ciudad">
+          <input class="field" id="d-country" placeholder="país">
+        </div>
+      </div>
+
+      <div class="field-section">
+        <div class="field-label">curado por</div>
+        <input class="field" id="d-curator" placeholder="@cuenta o nombre">
+      </div>
+
+      <div class="field-section">
+        <div class="field-label">url</div>
+        <input class="field" id="d-url">
+      </div>
+
+      <div class="action-bar">
+        <button class="btn danger" onclick="setStatus('rechazado')">rechazar</button>
+        <div class="spacer"></div>
+        <button class="btn">guardar borrador</button>
+        <button class="btn primary" onclick="setStatus('aprobado')">aprobar</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const items = {
+  event: {
+    title: 'Kraft Collective BA',
+    cat: 'events', type: 'party', status: 'pending',
+    desc: 'Fiesta con banda de DJs espectaculares en @_espacioespacio_. Sábado 16.',
+    tags: ['electrónica', 'djs', 'noche'],
+    city: 'Buenos Aires', country: 'AR',
+    curator: '@agendabsas',
+    url: 'https://www.instagram.com/kraftcollectiveba',
+    strip: 'strip-events',
+    specific: `
+      <div class="cat-block">
+        <div class="cat-block-label">info del evento</div>
+        <div class="field-grid" style="margin-bottom:10px">
+          <div><div class="field-label">fecha inicio</div><input class="field" type="date" value="2026-05-16"></div>
+          <div><div class="field-label">fecha fin</div><input class="field" type="date" value="2026-05-16"></div>
+        </div>
+        <div class="field-grid" style="margin-bottom:10px">
+          <div><div class="field-label">hora inicio</div><input class="field" type="time" value="22:00"></div>
+          <div><div class="field-label">hora fin</div><input class="field" type="time" value="04:00"></div>
+        </div>
+        <div class="field-grid" style="margin-bottom:10px">
+          <div><div class="field-label">venue</div><input class="field" value="Espacio Espacio"></div>
+          <div><div class="field-label">organizador</div><input class="field" value="@kraftcollectiveba"></div>
+        </div>
+        <div class="field-grid">
+          <div><div class="field-label">precio</div><input class="field" value="$2500"></div>
+          <div><div class="field-label">recurrente</div><select class="field"><option>no</option><option>sí</option></select></div>
+        </div>
+      </div>`
+  },
+  restaurant: {
+    title: 'Lula Restaurante',
+    cat: 'gastronomy', type: 'restaurant', status: 'pending',
+    desc: 'Domingo de pastas. Riquísimo. Recomendado por múltiples curadores.',
+    tags: ['pasta', 'italiana', 'domingo'],
+    city: 'Buenos Aires', country: 'AR',
+    curator: '@agendabsas',
+    url: 'https://www.instagram.com/lula_restaurante',
+    strip: 'strip-gastro',
+    specific: `
+      <div class="cat-block">
+        <div class="cat-block-label">info del lugar</div>
+        <div class="field-grid" style="margin-bottom:10px">
+          <div><div class="field-label">barrio</div><input class="field" placeholder="Palermo, Colegiales..." value="Belgrano"></div>
+          <div><div class="field-label">dirección</div><input class="field" placeholder="Calle 1234"></div>
+        </div>
+        <div style="margin-bottom:10px"><div class="field-label">platos destacados</div><input class="field" placeholder="ej: pasta fresca, tiramisú..."></div>
+        <div class="field-grid">
+          <div><div class="field-label">precio estimado</div><select class="field"><option>$ económico</option><option>$$ medio</option><option selected>$$$ alto</option></select></div>
+          <div><div class="field-label">reserva</div><select class="field"><option>necesaria</option><option selected>recomendada</option><option>sin reserva</option></select></div>
+        </div>
+      </div>`
+  }
+};
+
+function show(type, row) {
+  const d = items[type];
+  document.getElementById('d-title').textContent = d.title;
+  document.getElementById('d-cat').textContent = d.cat;
+  document.getElementById('d-type').textContent = d.type;
+  document.getElementById('d-desc').value = d.desc;
+  document.getElementById('d-city').value = d.city;
+  document.getElementById('d-country').value = d.country;
+  document.getElementById('d-curator').value = d.curator;
+  document.getElementById('d-url').value = d.url;
+  document.getElementById('d-specific').innerHTML = d.specific;
+
+  const strip = document.getElementById('d-strip');
+  strip.className = 'color-strip ' + d.strip;
+
+  const statusEl = document.getElementById('d-status');
+  statusEl.textContent = 'pendiente';
+  statusEl.className = 'badge pending';
+
+  const tagsWrap = document.getElementById('d-tags');
+  tagsWrap.innerHTML = d.tags.map(t =>
+    `<span class="tag">${t} <span class="x" onclick="this.parentElement.remove()">×</span></span>`
+  ).join('');
+
+  document.querySelectorAll('tbody tr').forEach(r => r.classList.remove('selected'));
+  if (row) row.classList.add('selected');
+}
+
+function addTag(e) {
+  if (e.key === 'Enter' && e.target.value.trim()) {
+    const tag = e.target.value.trim();
+    const wrap = document.getElementById('d-tags');
+    const el = document.createElement('span');
+    el.className = 'tag';
+    el.innerHTML = `${tag} <span class="x" onclick="this.parentElement.remove()">×</span>`;
+    wrap.appendChild(el);
+    e.target.value = '';
+  }
+}
+
+function setStatus(s) {
+  const el = document.getElementById('d-status');
+  if (s === 'aprobado') { el.textContent = 'aprobado'; el.className = 'badge approved'; }
+  else { el.textContent = 'rechazado'; el.className = 'badge rejected'; }
+}
+
+function setFilter(btn) {
+  document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function setTab(tab) {
+  document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+}
+
+show('event', document.querySelector('tbody tr'));
+</script>
+</body>
+</html>
